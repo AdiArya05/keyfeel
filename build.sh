@@ -2,10 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-destination="${1:-$HOME/Applications/Keyfeel.app}"
+destination="${1:-$HOME/Applications/Klick.app}"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
-bundle="$stage/Keyfeel.app"
+bundle="$stage/Klick.app"
 resources="$bundle/Contents/Resources/Sounds"
 
 mkdir -p "$bundle/Contents/MacOS" "$resources"

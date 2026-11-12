@@ -345,7 +345,7 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
         refreshOutput()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem = item
-        item.button?.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Keyfeel")
+        item.button?.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Klick")
         item.button?.target = self
         item.button?.action = #selector(togglePopover)
         refreshPermission()

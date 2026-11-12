@@ -6,7 +6,7 @@ final class KeyfeelPanel: NSPanel {
     init(model: Keyfeel) {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: true)
-        title = "Keyfeel"
+        title = "Klick"
         appearance = NSAppearance(named: .aqua)
         isOpaque = false
         backgroundColor = .clear
@@ -70,7 +70,7 @@ struct Panel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Keyfeel")
+            Text("Klick")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.secondary)
 
@@ -153,7 +153,7 @@ struct Panel: View {
                 .accessibilityLabel("Preview sound")
                 .help("Preview sound")
                 Menu {
-                    Button("Quit Keyfeel") { NSApp.terminate(nil) }
+                    Button("Quit Klick") { NSApp.terminate(nil) }
                         .keyboardShortcut("q", modifiers: .command)
                 } label: {
                     Image(systemName: "ellipsis").font(.system(size: 15, weight: .semibold))
