@@ -54,6 +54,7 @@ enum SoundError: Error {
 
 final class Playback {
     private let engine = AVAudioEngine()
+    private let toneEQ = AVAudioUnitEQ(numberOfBands: 3)
     private let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
     private let voices = (0..<16).map { _ in AVAudioPlayerNode() }
     private var nextVoice = 0
@@ -62,10 +63,35 @@ final class Playback {
     private var nextVariant = 0
 
     init() {
+        engine.attach(toneEQ)
+        let mix = AVAudioMixerNode()
+        engine.attach(mix)
+        engine.connect(mix, to: toneEQ, format: nil)
+        engine.connect(toneEQ, to: engine.mainMixerNode, format: nil)
+        let bands = toneEQ.bands
+        bands[0].filterType = .highShelf
+        bands[0].frequency = 4_200
+        bands[1].filterType = .parametric
+        bands[1].frequency = 220
+        bands[1].bandwidth = 1.4
+        bands[2].filterType = .parametric
+        bands[2].frequency = 2_700
+        bands[2].bandwidth = 1.2
+        setTone(CGPoint(x: 0.5, y: 0.5))
+        for band in bands { band.bypass = false }
         for voice in voices {
             engine.attach(voice)
-            engine.connect(voice, to: engine.mainMixerNode, format: format)
+            engine.connect(voice, to: mix, format: format)
         }
+    }
+
+    func setTone(_ tone: CGPoint) {
+        let brightness = Float(tone.x * 2 - 1)
+        let clack = Float(tone.y * 2 - 1)
+        toneEQ.bands[0].gain = brightness * 8
+        toneEQ.bands[1].gain = -clack * 7
+        toneEQ.bands[2].gain = clack * 6
+        toneEQ.globalGain = -max(abs(brightness), abs(clack)) * 3
     }
 
     func load(_ profile: Profile) throws {
@@ -257,6 +283,17 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
     @Published var volume = UserDefaults.standard.object(forKey: "volume") as? Double ?? 0.65 {
         didSet { UserDefaults.standard.set(volume, forKey: "volume") }
     }
+    @Published var tone = CGPoint(
+        x: min(1, max(0, UserDefaults.standard.object(forKey: "toneBrightness") as? Double ?? 0.5)),
+        y: min(1, max(0, UserDefaults.standard.object(forKey: "toneClack") as? Double ?? 0.5))
+    ) {
+        didSet {
+            UserDefaults.standard.set(Double(tone.x), forKey: "toneBrightness")
+            UserDefaults.standard.set(Double(tone.y), forKey: "toneClack")
+            playback.setTone(tone)
+        }
+    }
+
     @Published private(set) var monitoring = false
     @Published private(set) var permissionGranted = false
     @Published private(set) var audioFailed = false
@@ -279,6 +316,7 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
     private var permissionTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        playback.setTone(tone)
         loadProfile()
         refreshOutput()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)

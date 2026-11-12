@@ -11,6 +11,8 @@ Keyfeel plays mechanical keyboard sounds as you type on your Mac. Choose a switc
 
 Use **Sound → Output** to select an output device for Keyfeel. **System Default** follows your Mac’s current audio output. Keyfeel uses key events locally to trigger sounds and does not record what you type or send it over the network.
 
+Drag the vertical Volume control to adjust loudness. Drag across the tone pad for warmth or brightness, and move up for more clack or down for more thock.
+
 ## Build from source
 
 With Xcode or Xcode Command Line Tools installed, run:

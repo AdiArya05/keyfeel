@@ -10,6 +10,7 @@ resources="$bundle/Contents/Resources/Sounds"
 
 mkdir -p "$bundle/Contents/MacOS" "$resources"
 cp Info.plist "$bundle/Contents/"
+cp Assets/Keyfeel.icns "$bundle/Contents/Resources/"
 cp Sounds/Mechvibes-LICENSE.txt "$resources/"
 for pack in cherrymx-blue-pbt cherrymx-brown-pbt cherrymx-red-abs topre-purple-hybrid-pbt; do
     mkdir -p "$resources/$pack"

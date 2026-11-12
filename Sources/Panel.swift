@@ -30,15 +30,27 @@ final class KeyfeelPanel: NSPanel {
         backdrop.layer?.borderWidth = 1
         backdrop.layer?.borderColor = NSColor.white.withAlphaComponent(0.35).cgColor
 
+        let surface: NSView
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView(frame: bounds)
+            glass.style = .clear
+            glass.cornerRadius = 24
+            glass.tintColor = NSColor.white.withAlphaComponent(0.12)
+            glass.contentView = hosting
+            surface = glass
+        } else {
+            surface = hosting
+        }
+
         contentView = backdrop
         setContentSize(size)
-        hosting.translatesAutoresizingMaskIntoConstraints = false
-        backdrop.addSubview(hosting)
+        surface.translatesAutoresizingMaskIntoConstraints = false
+        backdrop.addSubview(surface)
         NSLayoutConstraint.activate([
-            hosting.leadingAnchor.constraint(equalTo: backdrop.leadingAnchor),
-            hosting.trailingAnchor.constraint(equalTo: backdrop.trailingAnchor),
-            hosting.topAnchor.constraint(equalTo: backdrop.topAnchor),
-            hosting.bottomAnchor.constraint(equalTo: backdrop.bottomAnchor)
+            surface.leadingAnchor.constraint(equalTo: backdrop.leadingAnchor),
+            surface.trailingAnchor.constraint(equalTo: backdrop.trailingAnchor),
+            surface.topAnchor.constraint(equalTo: backdrop.topAnchor),
+            surface.bottomAnchor.constraint(equalTo: backdrop.bottomAnchor)
         ])
     }
 
@@ -130,16 +142,7 @@ struct Panel: View {
                     .fixedSize()
                     .accessibilityLabel("Audio output")
                 }
-                HStack(spacing: 10) {
-                    Text("Volume")
-                    Slider(value: $model.volume, in: 0...1) { Text("Volume") }
-                        .labelsHidden()
-                        .controlSize(.small)
-                        .tint(.green)
-                    Text(model.volume, format: .percent.precision(.fractionLength(0)))
-                        .monospacedDigit()
-                        .frame(width: 39, alignment: .trailing)
-                }
+                SoundControls(volume: $model.volume, tone: $model.tone)
             }
             .font(.system(size: 13))
 
