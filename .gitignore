@@ -1,0 +1,5 @@
+.DS_Store
+build/
+dist/
+*.app/
+Sounds/keeby-k-pro-red/
