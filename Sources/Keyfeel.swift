@@ -97,9 +97,33 @@ final class Playback {
     func load(_ profile: Profile) throws {
         guard self.profile != profile else { return }
         let folder = Bundle.main.resourceURL!.appendingPathComponent("Sounds/\(profile.rawValue)")
-        samples = try profile == .kProRed ? loadKeeby(folder) : loadMechvibes(folder)
+        let sounds = try profile == .kProRed ? loadKeeby(folder) : loadMechvibes(folder)
+        normalizeLevel(sounds)
+        samples = sounds
         self.profile = profile
         nextVariant = 0
+    }
+
+    private func normalizeLevel(_ sounds: [String: [KeySounds]]) {
+        let variants = sounds.values.flatMap { $0 }
+        let presses = variants.map { peak(of: $0.down) }.filter { $0 > 0 }.sorted()
+        guard !presses.isEmpty else { return }
+        let typicalPeak = presses[presses.count / 2]
+        let loudestPeak = variants.map { max(peak(of: $0.down), peak(of: $0.up)) }.max() ?? typicalPeak
+        let gain = min(0.36 / typicalPeak, 0.68 / loudestPeak, 6)
+        for pair in variants {
+            for buffer in [pair.down, pair.up] {
+                guard let channel = buffer.floatChannelData?[0] else { continue }
+                for frame in 0..<Int(buffer.frameLength) {
+                    channel[frame] *= gain
+                }
+            }
+        }
+    }
+
+    private func peak(of buffer: AVAudioPCMBuffer) -> Float {
+        guard let channel = buffer.floatChannelData?[0] else { return 0 }
+        return (0..<Int(buffer.frameLength)).reduce(0) { max($0, abs(channel[$1])) }
     }
 
     private func loadKeeby(_ folder: URL) throws -> [String: [KeySounds]] {

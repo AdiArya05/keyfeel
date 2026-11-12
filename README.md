@@ -4,12 +4,15 @@ Keyfeel plays mechanical keyboard sounds as you type on your Mac. Choose a switc
 
 ## Install
 
-1. Download **Keyfeel-macOS.zip** from the [latest release](https://github.com/AdiArya05/keyfeel/releases/latest).
-2. Unzip it, move **Keyfeel.app** to Applications, and open it. The download supports Apple silicon and Intel Macs running macOS 14 or later.
-3. If macOS blocks the first launch, the release is ad-hoc signed and has no Apple notarization. Apple documents the per-app **Open Anyway** option in [Privacy & Security](https://support.apple.com/en-us/102445).
-4. In Keyfeel, choose **Enable Input Monitoring** and allow Keyfeel in System Settings. Reopen the app if macOS asks.
+1. [Download Keyfeel-macOS.zip](https://github.com/AdiArya05/keyfeel/releases/latest/download/Keyfeel-macOS.zip) for Apple silicon or Intel on macOS 14 or later.
+2. If you already have Keyfeel open, choose **⋯ → Quit Keyfeel**. Unzip the download, move **Keyfeel.app** to **Applications**, and choose **Replace** if asked. Open the copy in Applications.
+3. If macOS blocks the first launch, dismiss the alert, then go to **System Settings → Privacy & Security → Open Anyway** for Keyfeel and confirm **Open**. The ZIP is ad-hoc signed. [Apple’s first-launch instructions](https://support.apple.com/en-us/102445)
+4. Click the keyboard icon in the menu bar. Under **Sound → Output**, choose your Mac’s built-in speakers if that’s where you want to hear the sound. Raise Keyfeel’s **Volume** and press **▶** to test the selected output.
+5. Choose **Enable Input Monitoring**, turn on Keyfeel under **System Settings → Privacy & Security → Input Monitoring**, and reopen Keyfeel if macOS prompts you. With **Typing sounds on**, type a few letters to test.
 
-Use **Sound → Output** to select an output device for Keyfeel. **System Default** follows your Mac’s current audio output. Keyfeel uses key events locally to trigger sounds and does not record what you type or send it over the network.
+If the preview plays but typing is silent after replacing an older build, check Input Monitoring for the copy in **Applications**. If the permission is already on, remove that Keyfeel entry, add the installed copy again, and reopen it. If the preview is silent too, check the selected **Output** and your Mac’s speaker volume.
+
+Keyfeel uses key events locally to trigger sounds and does not record what you type or send it over the network.
 
 Drag the vertical Volume control to adjust loudness. Drag across the tone pad for warmth or brightness, and move up for more clack or down for more thock.
 

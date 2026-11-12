@@ -19,39 +19,28 @@ final class KeyfeelPanel: NSPanel {
         let hosting = NSHostingView(rootView: Panel(model: model))
         let size = hosting.fittingSize
         let bounds = NSRect(origin: .zero, size: size)
-        let backdrop = NSVisualEffectView(frame: bounds)
-        backdrop.material = .popover
-        backdrop.blendingMode = .behindWindow
-        backdrop.state = .active
-        backdrop.wantsLayer = true
-        backdrop.layer?.cornerRadius = 24
-        backdrop.layer?.cornerCurve = .continuous
-        backdrop.layer?.masksToBounds = true
-        backdrop.layer?.borderWidth = 1
-        backdrop.layer?.borderColor = NSColor.white.withAlphaComponent(0.35).cgColor
-
-        let surface: NSView
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView(frame: bounds)
-            glass.style = .clear
+            glass.style = .regular
             glass.cornerRadius = 24
-            glass.tintColor = NSColor.white.withAlphaComponent(0.12)
+            glass.tintColor = NSColor.white.withAlphaComponent(0.18)
             glass.contentView = hosting
-            surface = glass
+            contentView = glass
         } else {
-            surface = hosting
+            let backdrop = NSVisualEffectView(frame: bounds)
+            backdrop.material = .popover
+            backdrop.blendingMode = .behindWindow
+            backdrop.state = .active
+            backdrop.wantsLayer = true
+            backdrop.layer?.cornerRadius = 24
+            backdrop.layer?.cornerCurve = .continuous
+            backdrop.layer?.masksToBounds = true
+            contentView = backdrop
+            hosting.frame = backdrop.bounds
+            hosting.autoresizingMask = [.width, .height]
+            backdrop.addSubview(hosting)
         }
-
-        contentView = backdrop
         setContentSize(size)
-        surface.translatesAutoresizingMaskIntoConstraints = false
-        backdrop.addSubview(surface)
-        NSLayoutConstraint.activate([
-            surface.leadingAnchor.constraint(equalTo: backdrop.leadingAnchor),
-            surface.trailingAnchor.constraint(equalTo: backdrop.trailingAnchor),
-            surface.topAnchor.constraint(equalTo: backdrop.topAnchor),
-            surface.bottomAnchor.constraint(equalTo: backdrop.bottomAnchor)
-        ])
     }
 
     func show(below anchor: NSRect, on screen: NSScreen) {
