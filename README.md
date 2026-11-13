@@ -10,6 +10,8 @@ Klick plays mechanical keyboard sounds as you type on your Mac. Choose a switch,
 4. Click the keyboard icon in the menu bar. Under **Sound → Output**, choose your Mac’s built-in speakers if that’s where you want to hear the sound. Raise Klick’s **Volume** and press **▶** to test the selected output.
 5. Choose **Enable Input Monitoring**, turn on Klick under **System Settings → Privacy & Security → Input Monitoring**, and reopen Klick if macOS prompts you. With **Typing sounds on**, type a few letters to test.
 
+The preview button shows Pause while it plays. Click it again to stop the preview early. Klick stays quiet while an external keyboard is connected.
+
 If the preview plays but typing is silent after replacing an older build, check Input Monitoring for the copy in **Applications**. If the permission is already on, remove that Klick entry, add the installed copy again, and reopen it. If the preview is silent too, check the selected **Output** and your Mac’s speaker volume.
 
 Klick uses key events locally to trigger sounds and does not record what you type or send it over the network.

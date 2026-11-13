@@ -58,6 +58,7 @@ struct Panel: View {
         if model.audioFailed { return "Audio unavailable" }
         if !model.permissionGranted { return "Input Monitoring required" }
         if !model.monitoring { return "Reopen to start listening" }
+        if model.externalKeyboardConnected { return "Paused · External keyboard connected" }
         return model.enabled ? "Typing sounds on" : "Typing sounds paused"
     }
 
@@ -145,13 +146,15 @@ struct Panel: View {
                 }
                 Spacer()
                 Button {
-                    model.preview()
+                    model.togglePreview()
                 } label: {
-                    Image(systemName: "play.fill").padding(.horizontal, 5)
+                    Image(systemName: model.isPreviewPlaying ? "pause.fill" : "play.fill")
+                        .frame(width: 22)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Preview sound")
-                .help("Preview sound")
+                .disabled(model.externalKeyboardConnected)
+                .accessibilityLabel(model.isPreviewPlaying ? "Pause preview" : "Play preview")
+                .help(model.isPreviewPlaying ? "Pause preview" : "Play preview")
                 Menu {
                     Button("Quit Klick") { NSApp.terminate(nil) }
                         .keyboardShortcut("q", modifiers: .command)

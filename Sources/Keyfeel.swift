@@ -57,6 +57,7 @@ final class Playback {
     private let toneEQ = AVAudioUnitEQ(numberOfBands: 3)
     private let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
     private let voices = (0..<16).map { _ in AVAudioPlayerNode() }
+    private let previewVoices = (0..<(KeyboardKey.previewSequence.count * 2)).map { _ in AVAudioPlayerNode() }
     private var nextVoice = 0
     private var profile: Profile?
     private var samples: [String: [KeySounds]] = [:]
@@ -79,7 +80,7 @@ final class Playback {
         bands[2].bandwidth = 1.2
         setTone(CGPoint(x: 0.5, y: 0.5))
         for band in bands { band.bypass = false }
-        for voice in voices {
+        for voice in voices + previewVoices {
             engine.attach(voice)
             engine.connect(voice, to: mix, format: format)
         }
@@ -209,19 +210,28 @@ final class Playback {
         return buffer
     }
 
-    func play(_ key: String, released: Bool, pan: Float, volume: Float) throws {
+    @discardableResult
+    func play(_ key: String, released: Bool, pan: Float, volume: Float,
+              previewIndex: Int? = nil) throws -> TimeInterval {
         let sampleKey = profile == .kProRed && key == "Delete"
             ? "Backspace" : key
         guard let variants = samples[sampleKey] ?? samples["KeyA"] else { throw SoundError.missingSamples }
         let sound = variants[nextVariant % variants.count]
         if !released { nextVariant = (nextVariant + 1) % 2 }
         try warmUp()
-        let voice = voices[nextVoice]
-        nextVoice = (nextVoice + 1) % voices.count
+        let voice: AVAudioPlayerNode
+        if let previewIndex {
+            voice = previewVoices[previewIndex]
+        } else {
+            voice = voices[nextVoice]
+            nextVoice = (nextVoice + 1) % voices.count
+        }
         voice.pan = pan
         voice.volume = volume * (profile == .kProRed && released ? 0.57 : 1)
-        voice.scheduleBuffer(released ? sound.up : sound.down, at: nil, options: .interrupts)
+        let buffer = released ? sound.up : sound.down
+        voice.scheduleBuffer(buffer, at: nil, options: .interrupts)
         if !voice.isPlaying { voice.play() }
+        return Double(buffer.frameLength) / buffer.format.sampleRate
     }
 
     var outputDevice: AudioDeviceID { engine.outputNode.auAudioUnit.deviceID }
@@ -230,7 +240,8 @@ final class Playback {
         guard device != kAudioObjectUnknown else { throw SoundError.outputUnavailable }
         if outputDevice != device {
             engine.stop()
-            for voice in voices { voice.stop() }
+            stop()
+            stopPreview()
             try engine.outputNode.auAudioUnit.setDeviceID(device)
         }
         try warmUp()
@@ -244,10 +255,13 @@ final class Playback {
         for voice in voices where !voice.isPlaying { voice.play() }
     }
 
+    func stopPreview() {
+        for voice in previewVoices { voice.stop() }
+    }
+
     func stop() {
         for voice in voices {
             voice.stop()
-            if engine.isRunning { voice.play() }
         }
     }
 }
@@ -255,6 +269,8 @@ final class Playback {
 struct KeyboardKey {
     let sample: String
     let pan: Float
+
+    static let previewSequence: [UInt16] = [3, 34, 37, 49, 8, 37, 34, 40]
 
     static let keys: [UInt16: KeyboardKey] = {
         let rows: [[(UInt16, String)]] = [
@@ -301,6 +317,7 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
     } ?? .preferred {
         didSet {
             UserDefaults.standard.set(profile.rawValue, forKey: "soundProfile")
+            stopPreview()
             loadProfile()
         }
     }
@@ -338,8 +355,22 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
     private var eventTap: CFMachPort?
     private var eventSource: CFRunLoopSource?
     private var permissionTimer: Timer?
+    @Published private(set) var isPreviewPlaying = false
+    private var previewTask: Task<Void, Never>?
+    private var keyboardMonitor: ExternalKeyboardMonitor?
+    @Published private(set) var externalKeyboardConnected = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        keyboardMonitor = ExternalKeyboardMonitor { [weak self] connected in
+            guard let self, self.externalKeyboardConnected != connected else { return }
+            self.externalKeyboardConnected = connected
+            if connected {
+                self.stopPreview()
+                self.playback.stop()
+            } else {
+                self.audioFailed = false
+            }
+        }
         playback.setTone(tone)
         loadProfile()
         refreshOutput()
@@ -375,6 +406,7 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
         var note: String? = !outputID.isEmpty && selected == nil ? "Using system output" : nil
         do {
             try playback.route(to: device)
+            if audioFailed { loadProfile() }
         } catch {
             do {
                 try playback.route(to: system)
@@ -478,6 +510,7 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     private func play(_ key: KeyboardKey, released: Bool) {
+        guard !externalKeyboardConnected else { return }
         do {
             try playback.play(key.sample, released: released, pan: key.pan, volume: Float(volume))
             audioFailed = false
@@ -486,19 +519,50 @@ final class Keyfeel: NSObject, NSApplicationDelegate, ObservableObject {
         }
     }
 
-    func preview() {
+    func togglePreview() {
+        if isPreviewPlaying {
+            stopPreview()
+            return
+        }
+        guard !externalKeyboardConnected else { return }
         loadProfile()
         guard !audioFailed else { return }
-        let profile = self.profile
-        for (index, code) in [UInt16(3), 34, 37, 49].enumerated() {
-            guard let key = KeyboardKey.keys[code] else { continue }
-            for released in [false, true] {
-                let delay = Double(index) * 0.13 + (released ? 0.075 : 0)
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    guard let self, self.profile == profile else { return }
-                    self.play(key, released: released)
+
+        isPreviewPlaying = true
+        previewTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let start = ContinuousClock.now
+                var end = start
+                for (index, code) in KeyboardKey.previewSequence.enumerated() {
+                    guard let key = KeyboardKey.keys[code] else { continue }
+                    for released in [false, true] {
+                        let time = start + .milliseconds(index * 160 + (released ? 75 : 0))
+                        try await Task.sleep(until: time, clock: .continuous)
+                        try Task.checkCancellation()
+                        let duration = try self.playback.play(
+                            key.sample, released: released, pan: key.pan, volume: Float(self.volume),
+                            previewIndex: index * 2 + (released ? 1 : 0)
+                        )
+                        end = max(end, ContinuousClock.now + .seconds(duration))
+                    }
                 }
+                try await Task.sleep(until: end, clock: .continuous)
+                try Task.checkCancellation()
+                self.stopPreview()
+            } catch is CancellationError {
+                return
+            } catch {
+                self.audioFailed = true
+                self.stopPreview()
             }
         }
+    }
+
+    private func stopPreview() {
+        previewTask?.cancel()
+        previewTask = nil
+        playback.stopPreview()
+        isPreviewPlaying = false
     }
 }
